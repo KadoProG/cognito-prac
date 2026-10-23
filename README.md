@@ -120,6 +120,34 @@ pnpm --filter @cognito-prac/api db:generate   # schema.ts の変更から SQL �
 pnpm --filter @cognito-prac/api db:migrate    # 未適用の SQL を DATABASE_URL に適用
 ```
 
+## 画面（`apps/web`）
+
+Vite + React（react-router、Tailwind CSS）の SPA です。開発サーバーは `/api` を API（port 3000）へ
+プロキシするので、画面と API は同一オリジンとして動きます。
+
+### 画面と流れ
+
+| パス               | 内容                                                                |
+| ------------------ | ------------------------------------------------------------------- |
+| `/`                | ログイン済みの人だけ。メールアドレス・sub・最終ログインとログアウト |
+| `/login`           | ログイン。未確認のアカウントなら `/confirm` へ送る                  |
+| `/signup`          | サインアップ。成功したら `/confirm` へ                              |
+| `/confirm`         | 確認コードの入力（再送あり）。成功したら `/login` へ                |
+| `/forgot-password` | 確認コードを送る。成功したら `/reset-password` へ                   |
+| `/reset-password`  | コードと新しいパスワードを入力。成功したら `/login` へ              |
+
+- 未ログインで `/` を開くと `/login` に飛び、ログイン後に元の画面へ戻ります（`RequireAuth`）
+- ログイン済みで `/login` などを開くと `/` に飛びます（`GuestOnly`）
+- 起動時は `GET /api/auth/me` でセッションを復元し、401 なら一度だけ `POST /api/auth/refresh` を
+  試します（`AuthProvider`）。トークンは Cookie にあるので、画面のコードはトークンを持ちません
+- API の呼び出しは `hono/client` の `hc` で、API 側の型（`@cognito-prac/api` の `AppType`）を
+  そのまま使います。リクエストの形とレスポンスの型がずれるとビルドで落ちます
+
+### テスト
+
+`apps/web/src/App.test.tsx` が、`fetch` を差し替えてルーティングと認証の流れ（未ログインの
+リダイレクト、セッション復元、ログイン成功・失敗、未確認アカウント、ログアウト）を確かめます。
+
 ## 本番に向けて（Terraform を足すとき）
 
 アプリは環境変数しか見ないので、Terraform で次を用意し、その値を環境変数に渡せば動きます。
