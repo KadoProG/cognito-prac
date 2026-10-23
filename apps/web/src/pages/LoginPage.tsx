@@ -37,7 +37,7 @@ export function LoginPage() {
         throw caught;
       }
       navigate(locationState?.from ?? "/", { replace: true });
-    }).catch(() => {});
+    });
   };
 
   return (

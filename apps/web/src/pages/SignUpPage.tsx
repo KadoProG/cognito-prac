@@ -27,7 +27,7 @@ export function SignUpPage() {
         await api.api.auth.signup.$post({ json: { email, password } }),
       );
       navigate(`/confirm?email=${encodeURIComponent(email)}`);
-    }).catch(() => {});
+    });
   };
 
   return (

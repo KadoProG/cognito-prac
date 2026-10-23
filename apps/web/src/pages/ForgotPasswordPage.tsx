@@ -21,7 +21,7 @@ export function ForgotPasswordPage() {
         await api.api.auth["forgot-password"].$post({ json: { email } }),
       );
       navigate(`/reset-password?email=${encodeURIComponent(email)}`);
-    }).catch(() => {});
+    });
   };
 
   return (

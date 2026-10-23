@@ -31,11 +31,7 @@ export function HomePage() {
       </dl>
       <FormMessage kind="error">{error}</FormMessage>
       <div className="mt-4">
-        <Button
-          type="button"
-          pending={pending}
-          onClick={() => submit(logout).catch(() => {})}
-        >
+        <Button type="button" pending={pending} onClick={() => submit(logout)}>
           ログアウト
         </Button>
       </div>

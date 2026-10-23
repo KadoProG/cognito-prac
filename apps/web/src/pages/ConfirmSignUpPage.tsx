@@ -26,7 +26,7 @@ export function ConfirmSignUpPage() {
           message: "メールアドレスを確認しました。ログインしてください",
         },
       });
-    }).catch(() => {});
+    });
   };
 
   const onResend = async () => {
@@ -36,7 +36,7 @@ export function ConfirmSignUpPage() {
         await api.api.auth["resend-code"].$post({ json: { email } }),
       );
       setInfo("確認コードを再送しました");
-    }).catch(() => {});
+    });
   };
 
   return (

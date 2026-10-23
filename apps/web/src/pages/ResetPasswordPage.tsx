@@ -28,7 +28,7 @@ export function ResetPasswordPage() {
       navigate("/login", {
         state: { message: "パスワードを再設定しました。ログインしてください" },
       });
-    }).catch(() => {});
+    });
   };
 
   return (
