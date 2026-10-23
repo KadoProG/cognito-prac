@@ -14,7 +14,7 @@ const envSchema = z.object({
   COGNITO_USER_POOL_ID: z.string().min(1),
   COGNITO_CLIENT_ID: z.string().min(1),
   COGNITO_ENDPOINT: z.preprocess(emptyToUndefined, z.url().optional()),
-  COOKIE_SECURE: booleanString.default(false),
+  COOKIE_SECURE: z.preprocess(emptyToUndefined, booleanString.default(false)),
 });
 
 export type Config = {

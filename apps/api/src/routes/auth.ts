@@ -33,7 +33,10 @@ const json = <T extends z.ZodType>(schema: T) =>
     }
   });
 
-/** ID トークンから、アプリのユーザー表に写す情報を取り出す。 */
+/**
+ * ID トークンから、アプリのユーザー表に写す情報を取り出す。
+ * トークンは Cognito から TLS 越しに受け取った直後のものなので、署名の検証はしない。
+ */
 function readIdentity(idToken: string): { cognitoSub: string; email: string } {
   const claims = decodeJwt(idToken);
   if (typeof claims.sub !== "string" || typeof claims.email !== "string") {

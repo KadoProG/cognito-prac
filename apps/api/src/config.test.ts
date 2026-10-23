@@ -30,6 +30,12 @@ describe("loadConfig", () => {
     );
   });
 
+  it("treats an empty COOKIE_SECURE as false", () => {
+    const config = loadConfig({ ...base, COOKIE_SECURE: "" });
+
+    expect(config.cookieSecure).toBe(false);
+  });
+
   it("rejects missing required variables", () => {
     expect(() => loadConfig({ ...base, COGNITO_CLIENT_ID: "" })).toThrow(
       /COGNITO_CLIENT_ID/,
