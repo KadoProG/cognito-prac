@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# env files
+.env
+.env.*
+!.env.example
+
+# cognito-local のデータ（プール・クライアント・ユーザー）。config.json だけを追跡する
+.cognito/db/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+
+# Claude
+.claude/settings.local.json
