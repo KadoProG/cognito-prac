@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +30,10 @@ function mockApi(handlers: Record<string, Handler>) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = new Request(input, init);
+      // hc は "/api/..." の相対 URL で fetch を呼ぶ。Node の Request は絶対 URL しか
+      // 受けないので、ブラウザと同じようにオリジンを補う。
+      const url = input instanceof Request ? input.url : String(input);
+      const request = new Request(new URL(url, "http://localhost"), init);
       const key = `${request.method} ${new URL(request.url).pathname}`;
       calls.push(key);
       const handler = handlers[key];
@@ -50,6 +53,7 @@ function renderAt(path: string) {
 }
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
 });
 

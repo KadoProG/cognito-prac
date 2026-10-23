@@ -57,6 +57,12 @@ export async function unwrap<T>(
 
 /** 画面に出す文言。API の message は利用者向けに書かれているのでそのまま使う。 */
 export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (
+    error instanceof ApiError &&
+    error.code !== "INTERNAL_ERROR" &&
+    error.code !== "UNKNOWN"
+  ) {
+    return error.message;
+  }
   return "通信に失敗しました。時間をおいて再度お試しください";
 }
