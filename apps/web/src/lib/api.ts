@@ -21,6 +21,7 @@ export const api = hc<AppType>("/", { init: { credentials: "same-origin" } });
 export type User = {
   sub: string;
   email: string;
+  name: string;
   lastLoginAt: string;
 };
 

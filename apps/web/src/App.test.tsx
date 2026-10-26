@@ -21,6 +21,7 @@ const unauthenticated = () =>
 const user = {
   sub: "sub-1",
   email: "user@example.com",
+  name: "user",
   lastLoginAt: "2026-10-23T00:00:00Z",
 };
 
@@ -165,6 +166,52 @@ describe("App", () => {
     expect(screen.getByLabelText("メールアドレス")).toHaveValue(
       "user@example.com",
     );
+  });
+
+  it("edits the name and shows the saved value", async () => {
+    mockApi({
+      "GET /api/auth/me": () => json(200, { user }),
+      "PATCH /api/me": async (request) => {
+        expect(await request.json()).toEqual({ name: "Taro" });
+        return json(200, { user: { ...user, name: "Taro" } });
+      },
+    });
+    renderAt("/");
+
+    expect(await screen.findByText("user")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "名前を編集" }));
+    expect(screen.getByLabelText("名前")).toHaveValue("user");
+    await userEvent.clear(screen.getByLabelText("名前"));
+    await userEvent.type(screen.getByLabelText("名前"), "Taro");
+    await userEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByText("Taro")).toBeInTheDocument();
+    expect(screen.queryByLabelText("名前")).not.toBeInTheDocument();
+  });
+
+  it("shows the API error and keeps the form open when saving fails", async () => {
+    mockApi({
+      "GET /api/auth/me": () => json(200, { user }),
+      "PATCH /api/me": () =>
+        json(400, {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "入力が正しくありません",
+          },
+        }),
+    });
+    renderAt("/");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "名前を編集" }),
+    );
+    await userEvent.type(screen.getByLabelText("名前"), "Taro");
+    await userEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "入力が正しくありません",
+    );
+    expect(screen.getByLabelText("名前")).toBeInTheDocument();
   });
 
   it("logs out and returns to the login page", async () => {
