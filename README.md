@@ -17,7 +17,10 @@ apps/
   web/   Vite + React の画面（ログイン・サインアップ・パスワード再設定）
 .cognito/
   config.json   cognito-local の設定（db/ はコンテナが書くので追跡しない）
-docker-compose.yml   PostgreSQL と cognito-local
+.pgadmin/
+  servers.json  pgAdmin に最初から登録しておく接続先
+  pgpass        その接続のパスワード
+docker-compose.yml   PostgreSQL、cognito-local、pgAdmin
 ```
 
 ## 前提
@@ -30,7 +33,7 @@ docker-compose.yml   PostgreSQL と cognito-local
 
 ```sh
 pnpm install                                   # 依存の取得。git hooks（lefthook）もここで入る
-pnpm db:up                                     # PostgreSQL と cognito-local を起動
+pnpm db:up                                     # PostgreSQL、cognito-local、pgAdmin を起動
 pnpm --filter @cognito-prac/api cognito:setup  # cognito-local にプールとクライアントを作り apps/api/.env に書く
 pnpm --filter @cognito-prac/api db:migrate     # DB のマイグレーション
 pnpm dev                                       # api と web を同時に起動
@@ -59,6 +62,14 @@ CI（`.github/workflows/ci.yml`）は PR と `main` への push で同じもの�
 - 確認コード（サインアップの確認・パスワード再設定）はメールではなく、コンテナのログに出ます。
   `docker-compose.yml` で `CODE=123456` に固定しているので、ログを見なくても `123456` で通ります
 - ユーザープールとクライアントのデータは `.cognito/db/` に保存されます（git では追跡しない）
+
+### DB の管理画面（pgAdmin）
+
+`http://localhost:5050` で pgAdmin が開きます。
+
+- ログインは要りません。左のツリーの「cognito-prac」に、パスワードを入れずに接続できます
+- 接続先は `.pgadmin/servers.json` で決めています。pgAdmin 側の設定は保存しないので、
+  コンテナを作り直すたびに `servers.json` の内容から始まります
 
 ## API（`apps/api`）
 
