@@ -4,6 +4,7 @@ import { logger } from "hono/logger";
 
 import { AuthError } from "./errors.js";
 import { createAuthRoutes, type AuthRouteDeps } from "./routes/auth.js";
+import { createMeRoutes } from "./routes/me.js";
 
 export type AppDeps = AuthRouteDeps;
 
@@ -32,7 +33,8 @@ export function createApp(deps: AppDeps) {
   return app
     .basePath("/api")
     .get("/health", (c) => c.json({ ok: true }))
-    .route("/auth", createAuthRoutes(deps));
+    .route("/auth", createAuthRoutes(deps))
+    .route("/me", createMeRoutes(deps));
 }
 
 export type AppType = ReturnType<typeof createApp>;

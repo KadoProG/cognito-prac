@@ -59,6 +59,13 @@ function fakeUsers(): UserRepository & { rows: Map<string, User> } {
     async findByCognitoSub(sub) {
       return rows.get(sub) ?? null;
     },
+    async updateProfile(sub, input) {
+      const user = rows.get(sub);
+      if (!user) return null;
+      const updated = { ...user, ...input };
+      rows.set(sub, updated);
+      return updated;
+    },
   };
 }
 
@@ -207,6 +214,66 @@ describe("defaultNameFromEmail", () => {
     expect(defaultNameFromEmail("@example.com")).toBe("@example.com");
     expect(defaultNameFromEmail("taro")).toBe("taro");
   });
+});
+
+describe("PATCH /api/me", () => {
+  const patch = (
+    app: ReturnType<typeof setup>["app"],
+    body: unknown,
+    cookie = "access_token=access",
+  ) =>
+    app.request("/api/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    });
+
+  it("returns 401 without a valid access token", async () => {
+    const { app } = setup();
+
+    const res = await patch(app, { name: "Taro" }, "access_token=bogus");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("updates the name of the logged-in user", async () => {
+    const { app, users } = setup();
+    await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+
+    const res = await patch(app, { name: "  Taro  " });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      user: { sub: SUB, name: "Taro" },
+    });
+    expect(users.rows.get(SUB)?.name).toBe("Taro");
+  });
+
+  it("keeps the name when the user logs in again", async () => {
+    const { app, users, post } = setup();
+    await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+    await patch(app, { name: "Taro" });
+
+    const res = await post("/login", {
+      email: EMAIL,
+      password: "Password123!",
+    });
+
+    expect(await res.json()).toMatchObject({ user: { name: "Taro" } });
+  });
+
+  it.each([{ name: "" }, { name: "   " }, { name: "a".repeat(51) }, {}])(
+    "rejects invalid input %j with 400 VALIDATION_ERROR",
+    async (body) => {
+      const { app, users } = setup();
+      await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+
+      const res = await patch(app, body);
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("VALIDATION_ERROR");
+    },
+  );
 });
 
 describe("POST /api/auth/refresh", () => {

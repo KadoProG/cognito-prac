@@ -10,6 +10,9 @@ export type User = {
   lastLoginAt: Date;
 };
 
+/** 利用者が自分で変えられる項目。変えたいものだけを渡す。 */
+export type ProfileInput = Partial<Pick<User, "name">>;
+
 /** 名前の初期値。メールアドレスの `@` より前。取れなければメールアドレスそのもの。 */
 export function defaultNameFromEmail(email: string): string {
   return email.split("@")[0] || email;
@@ -22,6 +25,8 @@ export interface UserRepository {
    */
   upsertOnLogin(input: { cognitoSub: string; email: string }): Promise<User>;
   findByCognitoSub(cognitoSub: string): Promise<User | null>;
+  /** 渡した項目だけを更新して返す。該当のユーザーがいなければ null。 */
+  updateProfile(cognitoSub: string, input: ProfileInput): Promise<User | null>;
 }
 
 const toUser = (row: typeof users.$inferSelect): User => ({
@@ -54,6 +59,18 @@ export function createUserRepository(db: Db): UserRepository {
       const row = await db.query.users.findFirst({
         where: eq(users.cognitoSub, cognitoSub),
       });
+      return row ? toUser(row) : null;
+    },
+
+    async updateProfile(cognitoSub, input) {
+      // 更新する項目が無いと Drizzle は SET を作れず失敗するので、現状をそのまま返す。
+      if (Object.keys(input).length === 0)
+        return this.findByCognitoSub(cognitoSub);
+      const [row] = await db
+        .update(users)
+        .set(input)
+        .where(eq(users.cognitoSub, cognitoSub))
+        .returning();
       return row ? toUser(row) : null;
     },
   };
