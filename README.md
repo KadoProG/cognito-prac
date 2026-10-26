@@ -22,7 +22,7 @@ docker-compose.yml   PostgreSQL と cognito-local
 
 ## 前提
 
-- Node.js 22（`.node-version`）
+- Node.js 24（`.node-version`）
 - pnpm 10（`corepack enable` で `package.json` の `packageManager` の版が使われる）
 - Docker（PostgreSQL と cognito-local を動かす）
 
