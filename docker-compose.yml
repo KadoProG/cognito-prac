@@ -25,15 +25,44 @@ services:
       CODE: "123456"
     volumes:
       - ./.cognito:/app/.cognito
+    # localhost はコンテナ内で ::1 に解決されるが、cognito-local は IPv4 でしか待ち受けないので 127.0.0.1 を使う。
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "wget -q -O /dev/null http://localhost:9229/health || exit 1",
+          "wget -q -O /dev/null http://127.0.0.1:9229/health || exit 1",
         ]
       interval: 2s
       timeout: 3s
       retries: 15
+
+  # PostgreSQL の管理画面。http://localhost:5050 でログインなしに開き、postgres に接続済みの状態で始まる。
+  pgadmin:
+    image: dpage/pgadmin4:9
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - ./.pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./.pgadmin/pgpass:/pgpass.src:ro
+    # libpq はグループやほかのユーザーが読める pgpass を無視する。マウントしたファイルは権限を変えられないので、
+    # 600 でコピーしてから本来の entrypoint を起動する。
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "install -m 600 /pgpass.src /tmp/pgpass && exec /entrypoint.sh",
+      ]
+    # servers.json は初回起動時にしか取り込まれない。設定を残さず、起動のたびに servers.json から作り直す。
+    tmpfs:
+      - /var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres-data:
