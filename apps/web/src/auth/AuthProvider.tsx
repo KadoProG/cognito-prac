@@ -61,9 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: "unauthenticated" });
   }, []);
 
+  const updateName = useCallback(async (name: string) => {
+    const { user } = await unwrap(await api.api.me.$patch({ json: { name } }));
+    setState({ status: "authenticated", user });
+  }, []);
+
   const value = useMemo(
-    () => ({ state, login, logout }),
-    [state, login, logout],
+    () => ({ state, login, logout, updateName }),
+    [state, login, logout, updateName],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;
