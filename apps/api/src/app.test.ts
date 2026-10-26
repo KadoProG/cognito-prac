@@ -4,7 +4,11 @@ import { createApp } from "./app.js";
 import type { TokenVerifier } from "./auth/verifier.js";
 import type { CognitoGateway } from "./cognito/gateway.js";
 import { AuthError } from "./errors.js";
-import type { User, UserRepository } from "./users/repository.js";
+import {
+  defaultNameFromEmail,
+  type User,
+  type UserRepository,
+} from "./users/repository.js";
 
 const SUB = "11111111-1111-1111-1111-111111111111";
 const EMAIL = "user@example.com";
@@ -45,6 +49,8 @@ function fakeUsers(): UserRepository & { rows: Map<string, User> } {
       const user = {
         sub: input.cognitoSub,
         email: input.email,
+        name:
+          rows.get(input.cognitoSub)?.name ?? defaultNameFromEmail(input.email),
         lastLoginAt: new Date(),
       };
       rows.set(input.cognitoSub, user);
@@ -105,6 +111,17 @@ describe("POST /api/auth/login", () => {
       true,
     );
     expect(users.rows.get(SUB)?.email).toBe(EMAIL);
+  });
+
+  it("starts the name from the part of the email before the @", async () => {
+    const { post } = setup();
+
+    const res = await post("/login", {
+      email: EMAIL,
+      password: "Password123!",
+    });
+
+    expect(await res.json()).toMatchObject({ user: { name: "user" } });
   });
 
   it("returns 401 INVALID_CREDENTIALS without revealing whether the user exists", async () => {
@@ -178,6 +195,17 @@ describe("GET /api/auth/me", () => {
     expect(await res.json()).toMatchObject({
       user: { sub: SUB, email: EMAIL },
     });
+  });
+});
+
+describe("defaultNameFromEmail", () => {
+  it("takes the part before the @", () => {
+    expect(defaultNameFromEmail("taro@example.co.jp")).toBe("taro");
+  });
+
+  it("falls back to the whole address when nothing precedes the @", () => {
+    expect(defaultNameFromEmail("@example.com")).toBe("@example.com");
+    expect(defaultNameFromEmail("taro")).toBe("taro");
   });
 });
 
