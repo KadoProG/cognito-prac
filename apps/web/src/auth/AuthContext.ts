@@ -11,6 +11,7 @@ export type AuthContextValue = {
   state: AuthState;
   login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
+  updateName(name: string): Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

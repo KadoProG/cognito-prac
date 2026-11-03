@@ -4,7 +4,11 @@ import { createApp } from "./app.js";
 import type { TokenVerifier } from "./auth/verifier.js";
 import type { CognitoGateway } from "./cognito/gateway.js";
 import { AuthError } from "./errors.js";
-import type { User, UserRepository } from "./users/repository.js";
+import {
+  defaultNameFromEmail,
+  type User,
+  type UserRepository,
+} from "./users/repository.js";
 
 const SUB = "11111111-1111-1111-1111-111111111111";
 const EMAIL = "user@example.com";
@@ -45,6 +49,8 @@ function fakeUsers(): UserRepository & { rows: Map<string, User> } {
       const user = {
         sub: input.cognitoSub,
         email: input.email,
+        name:
+          rows.get(input.cognitoSub)?.name ?? defaultNameFromEmail(input.email),
         lastLoginAt: new Date(),
       };
       rows.set(input.cognitoSub, user);
@@ -52,6 +58,13 @@ function fakeUsers(): UserRepository & { rows: Map<string, User> } {
     },
     async findByCognitoSub(sub) {
       return rows.get(sub) ?? null;
+    },
+    async updateProfile(sub, input) {
+      const user = rows.get(sub);
+      if (!user) return null;
+      const updated = { ...user, ...input };
+      rows.set(sub, updated);
+      return updated;
     },
   };
 }
@@ -105,6 +118,17 @@ describe("POST /api/auth/login", () => {
       true,
     );
     expect(users.rows.get(SUB)?.email).toBe(EMAIL);
+  });
+
+  it("starts the name from the part of the email before the @", async () => {
+    const { post } = setup();
+
+    const res = await post("/login", {
+      email: EMAIL,
+      password: "Password123!",
+    });
+
+    expect(await res.json()).toMatchObject({ user: { name: "user" } });
   });
 
   it("returns 401 INVALID_CREDENTIALS without revealing whether the user exists", async () => {
@@ -179,6 +203,77 @@ describe("GET /api/auth/me", () => {
       user: { sub: SUB, email: EMAIL },
     });
   });
+});
+
+describe("defaultNameFromEmail", () => {
+  it("takes the part before the @", () => {
+    expect(defaultNameFromEmail("taro@example.co.jp")).toBe("taro");
+  });
+
+  it("falls back to the whole address when nothing precedes the @", () => {
+    expect(defaultNameFromEmail("@example.com")).toBe("@example.com");
+    expect(defaultNameFromEmail("taro")).toBe("taro");
+  });
+});
+
+describe("PATCH /api/me", () => {
+  const patch = (
+    app: ReturnType<typeof setup>["app"],
+    body: unknown,
+    cookie = "access_token=access",
+  ) =>
+    app.request("/api/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    });
+
+  it("returns 401 without a valid access token", async () => {
+    const { app } = setup();
+
+    const res = await patch(app, { name: "Taro" }, "access_token=bogus");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("updates the name of the logged-in user", async () => {
+    const { app, users } = setup();
+    await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+
+    const res = await patch(app, { name: "  Taro  " });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      user: { sub: SUB, name: "Taro" },
+    });
+    expect(users.rows.get(SUB)?.name).toBe("Taro");
+  });
+
+  it("keeps the name when the user logs in again", async () => {
+    const { app, users, post } = setup();
+    await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+    await patch(app, { name: "Taro" });
+
+    const res = await post("/login", {
+      email: EMAIL,
+      password: "Password123!",
+    });
+
+    expect(await res.json()).toMatchObject({ user: { name: "Taro" } });
+  });
+
+  it.each([{ name: "" }, { name: "   " }, { name: "a".repeat(51) }, {}])(
+    "rejects invalid input %j with 400 VALIDATION_ERROR",
+    async (body) => {
+      const { app, users } = setup();
+      await users.upsertOnLogin({ cognitoSub: SUB, email: EMAIL });
+
+      const res = await patch(app, body);
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("VALIDATION_ERROR");
+    },
+  );
 });
 
 describe("POST /api/auth/refresh", () => {
